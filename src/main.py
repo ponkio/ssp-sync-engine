@@ -3,9 +3,14 @@ import os
 import logging
 import argparse
 import datetime
+import requests
 
 def sync_environment(config):
-    logging.debug(f"Triggering sync: {config}")
+    logging.debug(f"Triggering sync: {config['customer']}/{config['cloud']['name']}")
+    payload = config
+    del payload['_id']
+    sync_req = requests.post("http://gateway.openfaas:8080/function/aws-scanner", json=payload)
+    logging.debug(sync_req)
 
 def main(args, mongoClient):
     
@@ -28,6 +33,7 @@ def main(args, mongoClient):
 
         logging.info(f"Syncing {len(stagged_sync)} configs")
         for env in stagged_sync:
+            env['customer'] = customer
             sync_environment(env)
 
 
@@ -46,7 +52,7 @@ if __name__ == "__main__":
         prog = "Sync Engine",
         description = "Core cli for scheduling enviornment syncs."
     )
-    parser.add_argument('-s', '--schedule', description="Schedule in cron format i.e '0 * * * *'", required=True)
+    parser.add_argument('-s', '--schedule', help="Schedule in cron format i.e '0 * * * *'", required=True)
     args = parser.parse_args()
     logging.info("Starting Sync Engine")
     main(args, mongoClient)
